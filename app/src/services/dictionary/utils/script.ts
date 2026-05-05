@@ -1,17 +1,13 @@
+import { hasCyrillic, hasLatin, matchesLanguage } from '../../../utils/language'
+
+export { hasCyrillic, hasLatin }
+
 export function isCyrillicWord(value: string): boolean {
   return /[а-яё]/i.test(value)
 }
 
-export function hasCyrillic(value: string): boolean {
-  return /[а-яё]/i.test(value)
-}
-
-export function hasLatin(value: string): boolean {
-  return /[a-z]/i.test(value)
-}
-
 export function hasExpectedScript(value: string, isRussianInput: boolean): boolean {
-  return isRussianInput ? hasCyrillic(value) : hasLatin(value)
+  return matchesLanguage(value, isRussianInput ? 'ru' : 'en')
 }
 
 export function countWords(value: string): number {
@@ -31,8 +27,8 @@ export function isAcceptableDefinition(
   }
 
   if (isRussianInput) {
-    return hasCyrillic(normalized) && countWords(normalized) >= 3
+    return hasExpectedScript(normalized, true) && countWords(normalized) >= 3
   }
 
-  return hasLatin(normalized)
+  return hasExpectedScript(normalized, false)
 }

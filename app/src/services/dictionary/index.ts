@@ -1,13 +1,16 @@
 import { localDictionary } from '../../data/localDictionary'
 import type { WordData } from '../../types/word'
+import { detectWordLanguage, isSupportedLookupText } from '../../utils/language'
 import { normalizeWord } from '../../utils/normalizeWord'
 import { DictionaryError } from './errors'
 import { mergeWithHints } from './hints'
 import { ensureCompleteWordData, pickBestExamples } from './normalizers'
+import { fetchDatamuseRelatedWords } from './providers/datamuse'
 import { fetchFromFreeDictionaryApi, fetchRawExamplesFromFreeDictionary } from './providers/freeDictionary'
 import { fetchFromLegacyApi } from './providers/legacyDictionary'
 import { fetchFromRelycDictionaryApi } from './providers/relycDictionary'
 import { fromSemanticFallback } from './providers/semantic'
+import { fetchFromWiktionaryApi } from './providers/wiktionary'
 import { fetchFromYandexDictionaryApi } from './providers/yandex'
 import {
   detectWordDataQualityTier,
@@ -15,28 +18,6 @@ import {
   isTierAtLeast,
   type WordDataQualityTier,
 } from './quality'
-import { isCyrillicWord } from './utils/script'
-
-function fromGeneratedFallback(query: string): WordData {
-  return ensureCompleteWordData(
-    query,
-    mergeWithHints(
-      {
-        word: query,
-        definition: '',
-        simpleExplanation: '',
-        partOfSpeech: undefined,
-        examples: [],
-        style: [],
-        usageTips: [],
-        mistakes: [],
-        relatedWords: [],
-        source: 'fallback',
-      },
-      query,
-    ),
-  )
-}
 
 function sanitizeDisplayWord(rawQuery: string, normalizedQuery: string): string {
   const cleaned = rawQuery
@@ -55,6 +36,34 @@ function withDisplayWord(data: WordData, displayWord: string): WordData {
     ...data,
     word: displayWord,
   }
+}
+
+function getLanguageAwareErrorMessage(
+  language: 'ru' | 'en' | null,
+  code: 'EMPTY' | 'INVALID' | 'NOT_FOUND' | 'NETWORK',
+  query?: string,
+): string {
+  if (language === 'en') {
+    const word = query ? `"${query}"` : 'this word'
+    const messages: Record<typeof code, string> = {
+      EMPTY: 'Enter a word to search.',
+      INVALID: 'Use one English word or phrase without digits or mixed alphabets.',
+      NOT_FOUND: `No reliable dictionary entry was found for ${word}. Check spelling or try another word.`,
+      NETWORK: 'Dictionary services are temporarily unavailable. Try again later.',
+    }
+
+    return messages[code]
+  }
+
+  const word = query ? `«${query}»` : 'слово'
+  const messages: Record<typeof code, string> = {
+    EMPTY: 'Введите слово для поиска.',
+    INVALID: 'Введите русское или английское слово без цифр и смешения алфавитов.',
+    NOT_FOUND: `Не удалось найти надёжное словарное значение для ${word}. Проверьте написание или попробуйте другое слово.`,
+    NETWORK: 'Словарные сервисы временно недоступны. Попробуйте позже.',
+  }
+
+  return messages[code]
 }
 
 async function fetchBestEffortExamples(
@@ -82,6 +91,30 @@ async function fetchBestEffortExamples(
   return tryFetchExamples('all')
 }
 
+async function enrichEnglishRelatedWords(
+  data: WordData,
+  query: string,
+  signal?: AbortSignal,
+): Promise<WordData> {
+  try {
+    const datamuseRelated = await fetchDatamuseRelatedWords(query, signal)
+    if (datamuseRelated.length === 0) {
+      return data
+    }
+
+    return {
+      ...data,
+      relatedWords: datamuseRelated,
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
+    }
+
+    return data
+  }
+}
+
 export async function fetchWordData(
   rawQuery: string,
   signal?: AbortSignal,
@@ -93,12 +126,26 @@ export async function fetchWordData(
     throw new DictionaryError('Введите слово для поиска.', 'NOT_FOUND')
   }
 
-  const localData = localDictionary[query]
-  if (localData) {
-    return withDisplayWord(mergeWithHints(localData, query), displayWord)
+  const language = detectWordLanguage(query)
+  if (!language || !isSupportedLookupText(query, language)) {
+    throw new DictionaryError(
+      getLanguageAwareErrorMessage(language, 'INVALID'),
+      'NOT_FOUND',
+    )
   }
 
-  const isRussianInput = isCyrillicWord(query)
+  const localData = localDictionary[query]
+  if (localData) {
+    return withDisplayWord(
+      {
+        ...mergeWithHints(localData, query),
+        language,
+      },
+      displayWord,
+    )
+  }
+
+  const isRussianInput = language === 'ru'
   let hasServiceErrors = false
   let bestCandidate: WordData | null = null
   const targetTier: WordDataQualityTier = 'dictionary'
@@ -133,6 +180,13 @@ export async function fetchWordData(
 
   try {
     if (isRussianInput) {
+      const wiktionaryRu = await tryProvider(() =>
+        fetchFromWiktionaryApi(query, 'ru', signal),
+      )
+      if (wiktionaryRu && considerCandidate(wiktionaryRu)) {
+        return withDisplayWord(wiktionaryRu, displayWord)
+      }
+
       const relycRu = await tryProvider(() => fetchFromRelycDictionaryApi(query, signal))
       if (relycRu && considerCandidate(relycRu)) {
         return withDisplayWord(relycRu, displayWord)
@@ -190,12 +244,25 @@ export async function fetchWordData(
 
       if (hasServiceErrors) {
         throw new DictionaryError(
-          'Словарные сервисы временно недоступны. Попробуйте позже.',
+          getLanguageAwareErrorMessage(language, 'NETWORK'),
           'NETWORK',
         )
       }
 
-      return withDisplayWord(fromGeneratedFallback(query), displayWord)
+      throw new DictionaryError(
+        getLanguageAwareErrorMessage(language, 'NOT_FOUND', query),
+        'NOT_FOUND',
+      )
+    }
+
+    const wiktionaryEn = await tryProvider(() =>
+      fetchFromWiktionaryApi(query, 'en', signal),
+    )
+    if (wiktionaryEn && considerCandidate(wiktionaryEn)) {
+      return withDisplayWord(
+        await enrichEnglishRelatedWords(wiktionaryEn, query, signal),
+        displayWord,
+      )
     }
 
     const relycAny = await tryProvider(() => fetchFromRelycDictionaryApi(query, signal))
@@ -248,12 +315,15 @@ export async function fetchWordData(
 
     if (hasServiceErrors) {
       throw new DictionaryError(
-        'Словарные сервисы временно недоступны. Попробуйте позже.',
+        getLanguageAwareErrorMessage(language, 'NETWORK'),
         'NETWORK',
       )
     }
 
-    return withDisplayWord(fromGeneratedFallback(query), displayWord)
+    throw new DictionaryError(
+      getLanguageAwareErrorMessage(language, 'NOT_FOUND', query),
+      'NOT_FOUND',
+    )
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error

@@ -320,15 +320,15 @@ test('network statuses 429/500 across providers result in controlled NETWORK err
   globalThis.fetch = async (input: URL | RequestInfo): Promise<Response> => {
     const url = typeof input === 'string' ? input : input.url
 
-    if (url.includes('/api/v1/entries/en/zzzz_nonexistent_word')) {
+    if (url.includes('/api/v1/entries/en/zzzznonexistentword')) {
       return jsonResponse({ error: 'rate limit' }, 429)
     }
 
-    if (url.includes('/api/v1/entries/all/zzzz_nonexistent_word')) {
+    if (url.includes('/api/v1/entries/all/zzzznonexistentword')) {
       return jsonResponse({ error: 'unavailable' }, 500)
     }
 
-    if (url.includes('/api/v2/entries/en/zzzz_nonexistent_word')) {
+    if (url.includes('/api/v2/entries/en/zzzznonexistentword')) {
       return jsonResponse({ error: 'unavailable' }, 500)
     }
 
@@ -337,11 +337,11 @@ test('network statuses 429/500 across providers result in controlled NETWORK err
 
   try {
     await assert.rejects(
-      fetchWordData('zzzz_nonexistent_word'),
+      fetchWordData('zzzznonexistentword'),
       (error: unknown) =>
         error instanceof DictionaryError &&
         error.code === 'NETWORK' &&
-        /временно недоступны/i.test(error.message),
+        /temporarily unavailable/i.test(error.message),
     )
   } finally {
     globalThis.fetch = originalFetch

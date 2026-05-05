@@ -14,15 +14,15 @@ function buildNaturalSemanticExamples(word: string, partOfSpeech: string | undef
 
   if (normalizedPos === 'verb') {
     return [
-      `Он любит ${word} по утрам в парке.`,
-      `Мы начали ${word} после короткого сигнала.`,
+      `Важно ${word} задачу последовательно и точно.`,
+      `Мы начали ${word} план после обсуждения деталей.`,
     ]
   }
 
   if (normalizedPos === 'adjective') {
     return [
-      `Этот выбор выглядит ${word} для читателя.`,
-      `Его ответ прозвучал ${word} и точно.`,
+      `${titleWord} образ делает текст выразительнее.`,
+      `Автор выбрал ${word} пример для объяснения темы.`,
     ]
   }
 

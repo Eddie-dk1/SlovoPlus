@@ -80,7 +80,7 @@ export function countKeywordMatches(text: string, keywords: string[]): number {
       return count + 2
     }
 
-    return text.includes(normalizedKeyword) ? count + 1 : count
+    return count
   }, 0)
 }
 
@@ -144,6 +144,20 @@ export const semanticPatterns: SemanticPattern[] = [
       `Общее пояснение: значение слова «${word}» употребляется в бытовом и нейтральном контексте.`,
     ],
     relatedWords: ['жилье', 'здание', 'квартира', 'очаг'],
+  },
+  {
+    id: 'friendship_relation',
+    pos: 'noun',
+    keywords: ['friendship', 'friend', 'friends', 'companionship'],
+    definitionTemplate: (word) =>
+      `«${word}» — близкие доброжелательные отношения между людьми, основанные на доверии и поддержке.`,
+    simpleExplanationTemplate: (word) =>
+      `${word} — это отношения, когда люди доверяют друг другу, помогают и сохраняют взаимную привязанность.`,
+    examplesTemplate: (word) => [
+      `${word[0].toUpperCase()}${word.slice(1)} помогла героям преодолеть трудности.`,
+      `Настоящая ${word} требует доверия и уважения.`,
+    ],
+    relatedWords: ['доверие', 'поддержка', 'товарищество', 'близость'],
   },
   {
     id: 'water_vehicle',
@@ -330,16 +344,30 @@ export const semanticPatterns: SemanticPattern[] = [
   {
     id: 'making_creation',
     pos: 'verb',
-    keywords: ['make', 'create', 'produce', 'build'],
+    keywords: ['make', 'create', 'produce', 'build', 'carry out', 'implement', 'perform', 'execute'],
     definitionTemplate: (word) =>
-      `«${word}» — создавать, изготавливать или приводить что-либо в готовое состояние.`,
+      `«${word}» — выполнять, проводить или доводить действие до практического результата.`,
     simpleExplanationTemplate: (word) =>
-      `${word} — значит делать или создавать что-то.`,
+      `${word} — значит делать нечто на практике: выполнять план, действие или задачу.`,
     examplesTemplate: (word) => [
       `Общее пояснение: глагол «${word}» связан с действием, созданием или подготовкой результата.`,
       `Общее пояснение: слово «${word}» часто употребляется в бытовом и рабочем контексте.`,
     ],
     relatedWords: ['создавать', 'изготавливать', 'дело', 'результат'],
+  },
+  {
+    id: 'beauty_quality',
+    pos: 'adjective',
+    keywords: ['beautiful', 'handsome', 'pretty', 'attractive', 'lovely', 'good-looking'],
+    definitionTemplate: (word) =>
+      `«${word}» — обладающий внешней или выразительной красотой, приятный для восприятия.`,
+    simpleExplanationTemplate: (word) =>
+      `${word} — так говорят о том, что выглядит гармонично, привлекательно или эстетично.`,
+    examplesTemplate: (word) => [
+      `Общее пояснение: прилагательное «${word}» описывает красоту или привлекательность.`,
+      `Общее пояснение: значение слова «${word}» связано с положительным зрительным впечатлением.`,
+    ],
+    relatedWords: ['привлекательный', 'эстетичный', 'изящный', 'гармоничный'],
   },
   {
     id: 'size_quality',

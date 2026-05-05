@@ -11,8 +11,11 @@ export type WordDataSource =
   | 'local_override'
   | 'fallback'
 
+export type WordLanguage = 'ru' | 'en'
+
 export interface WordData {
   word: string
+  language?: WordLanguage
   definition: string
   simpleExplanation?: string
   partOfSpeech?: string

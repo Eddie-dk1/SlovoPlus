@@ -1,6 +1,7 @@
 import type { WordStyle } from '../types/word'
+import type { WordLanguage } from '../types/word'
 
-const styleLabelMap: Record<WordStyle, string> = {
+const russianStyleLabelMap: Record<WordStyle, string> = {
   нейтральное: 'Нейтральное',
   разговорное: 'Разговорное',
   книжное: 'Книжное',
@@ -8,6 +9,14 @@ const styleLabelMap: Record<WordStyle, string> = {
   публицистическое: 'Публицистическое',
 }
 
-export function getStyleLabel(style: WordStyle): string {
-  return styleLabelMap[style]
+const englishStyleLabelMap: Record<WordStyle, string> = {
+  нейтральное: 'Neutral',
+  разговорное: 'Informal',
+  книжное: 'Literary',
+  'официально-деловое': 'Formal',
+  публицистическое: 'Journalistic',
+}
+
+export function getStyleLabel(style: WordStyle, language: WordLanguage = 'ru'): string {
+  return language === 'ru' ? russianStyleLabelMap[style] : englishStyleLabelMap[style]
 }

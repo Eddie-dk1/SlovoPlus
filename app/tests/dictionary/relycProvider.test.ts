@@ -110,6 +110,24 @@ test('builds communication-device semantic card for телефон from english 
   assert.equal(data?.source, 'semantic_assist')
 })
 
+test('does not match ship inside friendship for russian semantic assist', () => {
+  const data = fromRelycDictionaryResponse('дружба', {
+    word: 'дружба',
+    entries: [
+      {
+        lang: 'ru',
+        lemma: 'дружба',
+        pos: 'NOUN',
+        definitions: [{ locale: 'en', definitions: ['friendship (condition of being friends)'] }],
+      },
+    ],
+  })
+
+  assert.notEqual(data, null)
+  assert.match(data?.definition ?? '', /отношения|довер/i)
+  assert.doesNotMatch(data?.definition ?? '', /судно|вод/i)
+})
+
 test('handles spelling-of english gloss and still builds semantic card', () => {
   const data = fromRelycDictionaryResponse('телефон', {
     word: 'телефон',

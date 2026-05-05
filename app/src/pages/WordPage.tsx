@@ -15,6 +15,7 @@ import { searchSuggestions } from '../data/searchSuggestions'
 import { useFavorites } from '../hooks/useFavorites'
 import { useRecentSearches } from '../hooks/useRecentSearches'
 import { useWordSearch } from '../hooks/useWordSearch'
+import { detectWordLanguage } from '../utils/language'
 
 function WordLookupResult({
   query,
@@ -26,15 +27,24 @@ function WordLookupResult({
   onToggleFavorite: (word: string) => void
 }) {
   const { isLoading, error, data } = useWordSearch(query)
+  const queryLanguage = detectWordLanguage(query) ?? 'ru'
 
   if (isLoading) {
-    return <Loader label="Ищем определение..." />
+    return (
+      <Loader
+        label={queryLanguage === 'ru' ? 'Ищем определение...' : 'Searching definition...'}
+      />
+    )
   }
 
   if (error) {
     return (
       <ErrorMessage
-        message={`${error} Можно попробовать другой запрос или открыть раздел изучения.`}
+        message={
+          queryLanguage === 'ru'
+            ? `${error} Можно попробовать другой запрос или открыть раздел изучения.`
+            : `${error} Try another query or open the learning section.`
+        }
       />
     )
   }
@@ -42,13 +52,29 @@ function WordLookupResult({
   if (!data) {
     return (
       <EmptyState
-        title="Не удалось подобрать карточку"
-        description="Попробуй более распространённое слово, проверь написание или открой учебные подборки."
-        primaryLink={{ label: 'Открыть раздел «Изучение»', to: '/learn' }}
-        secondaryLink={{ label: 'Вернуться на главную', to: '/' }}
+        title={
+          queryLanguage === 'ru'
+            ? 'Не удалось подобрать карточку'
+            : 'No word card available'
+        }
+        description={
+          queryLanguage === 'ru'
+            ? 'Попробуй более распространённое слово, проверь написание или открой учебные подборки.'
+            : 'Try a more common word, check spelling, or open learning collections.'
+        }
+        primaryLink={{
+          label: queryLanguage === 'ru' ? 'Открыть раздел «Изучение»' : 'Open learning',
+          to: '/learn',
+        }}
+        secondaryLink={{
+          label: queryLanguage === 'ru' ? 'Вернуться на главную' : 'Back home',
+          to: '/',
+        }}
       />
     )
   }
+
+  const language = data.language ?? detectWordLanguage(data.word) ?? queryLanguage
 
   return (
     <div className="space-y-4">
@@ -60,12 +86,13 @@ function WordLookupResult({
       <DefinitionBlock
         definition={data.definition}
         simpleExplanation={data.simpleExplanation}
+        language={language}
       />
-      <ExamplesBlock examples={data.examples} />
-      <UsageTips usageTips={data.usageTips} mistakes={data.mistakes} />
-      <ContextAnalyzer word={data.word} styles={data.style} />
-      <RelatedWords relatedWords={data.relatedWords} />
-      <MiniQuiz word={data.word} relatedWords={data.relatedWords} />
+      <ExamplesBlock examples={data.examples} language={language} />
+      <UsageTips usageTips={data.usageTips} mistakes={data.mistakes} language={language} />
+      <ContextAnalyzer word={data.word} styles={data.style} language={language} />
+      <RelatedWords relatedWords={data.relatedWords} language={language} />
+      <MiniQuiz word={data.word} relatedWords={data.relatedWords} language={language} />
     </div>
   )
 }
@@ -86,6 +113,7 @@ export function WordPage() {
   const { query: rawQuery } = useParams<{ query: string }>()
   const navigate = useNavigate()
   const query = safeDecodeRouteQuery(rawQuery)
+  const queryLanguage = detectWordLanguage(query) ?? 'ru'
   const { addRecentSearch } = useRecentSearches()
   const { isFavorite, toggleFavorite } = useFavorites()
 
@@ -112,13 +140,13 @@ export function WordPage() {
       <section className="surface-hover rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-            Карточка слова
+            {queryLanguage === 'ru' ? 'Карточка слова' : 'Word card'}
           </p>
           <Link
             to="/"
             className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
           >
-            Назад
+            {queryLanguage === 'ru' ? 'Назад' : 'Back'}
           </Link>
         </div>
         <SearchBar
@@ -127,7 +155,9 @@ export function WordPage() {
           suggestions={searchSuggestions}
         />
         <p className="mt-3 text-xs text-slate-500">
-          Если слово не найдено в источнике, сервис покажет безопасный fallback и рекомендации по контексту.
+          {queryLanguage === 'ru'
+            ? 'Если слово не найдено в источнике, сервис покажет аккуратное сообщение без мусорных данных.'
+            : 'If no reliable entry is found, the service shows a clear message instead of noisy data.'}
         </p>
       </section>
 

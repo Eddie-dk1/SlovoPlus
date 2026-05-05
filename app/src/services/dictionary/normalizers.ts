@@ -16,7 +16,6 @@ import {
 import { normalizeRelatedToken, uniqueValues } from './utils/collections'
 import {
   countWords,
-  hasCyrillic,
   hasExpectedScript,
   isAcceptableDefinition,
   isCyrillicWord,
@@ -96,6 +95,7 @@ export function sanitizeRelatedWords(
 
 export function ensureCompleteWordData(query: string, data: WordData): WordData {
   const russianInput = isCyrillicWord(query)
+  const language = russianInput ? 'ru' : 'en'
   const relatedWordsFromData = sanitizeRelatedWords(query, data.relatedWords, russianInput)
   const relatedWords =
     relatedWordsFromData.length > 0
@@ -122,7 +122,7 @@ export function ensureCompleteWordData(query: string, data: WordData): WordData 
         : getFallbackExamples(query, russianInput)
   const simpleExplanation =
     data.simpleExplanation &&
-    (!russianInput || hasCyrillic(data.simpleExplanation))
+    hasExpectedScript(data.simpleExplanation, russianInput)
       ? data.simpleExplanation
       : buildFallbackSimpleExplanation(query, russianInput)
   const generatedExampleTips =
@@ -130,19 +130,20 @@ export function ensureCompleteWordData(query: string, data: WordData): WordData 
       ? ['Дополнительное пояснение лучше проверять по полному контексту предложения.']
       : []
   const usageTips = uniqueValues(
-    data.usageTips.length > 0
-      ? [...data.usageTips, ...generatedExampleTips]
+    filterByExpectedScript(data.usageTips, russianInput).length > 0
+      ? [...filterByExpectedScript(data.usageTips, russianInput), ...generatedExampleTips]
       : [...generatedExampleTips, ...buildFallbackUsageTips(query, russianInput, data.partOfSpeech)],
     6,
   )
   const mistakes =
-    data.mistakes.length > 0
-      ? data.mistakes
+    filterByExpectedScript(data.mistakes, russianInput).length > 0
+      ? filterByExpectedScript(data.mistakes, russianInput)
       : buildFallbackMistakes(query, russianInput)
 
   return {
     ...data,
     word: data.word || query,
+    language,
     definition,
     simpleExplanation,
     examples,

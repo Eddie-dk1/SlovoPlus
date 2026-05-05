@@ -4,6 +4,7 @@ export const YANDEX_DICTIONARY_API_BASE_URL =
   'https://dictionary.yandex.net/api/v1/dicservice.json/lookup'
 export const RELYC_DICTIONARY_API_BASE_URL =
   'https://dictionary.relycapp.com/api/v1/dictionary/lookup'
+export const DATAMUSE_API_BASE_URL = 'https://api.datamuse.com/words'
 
 const runtimeEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 const globalWithProcess = globalThis as typeof globalThis & {

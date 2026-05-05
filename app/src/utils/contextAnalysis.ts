@@ -1,4 +1,5 @@
 import type { WordStyle } from '../types/word'
+import type { WordLanguage } from '../types/word'
 import { normalizeWord } from './normalizeWord'
 
 type Register = 'neutral' | 'informal' | 'formal' | 'mixed'
@@ -29,14 +30,38 @@ const formalMarkers = [
   'поскольку',
 ]
 
+const englishInformalMarkers = [
+  'kinda',
+  'sort of',
+  'gonna',
+  'wanna',
+  'cool',
+  'dude',
+]
+
+const englishFormalMarkers = [
+  'therefore',
+  'pursuant',
+  'accordingly',
+  'required',
+  'shall',
+  'implementation',
+]
+
 function includesAny(source: string, items: string[]): boolean {
   return items.some((item) => source.includes(item))
 }
 
-function detectRegister(sentence: string): Register {
-  const normalized = sentence.toLocaleLowerCase('ru-RU')
-  const hasInformal = includesAny(normalized, informalMarkers)
-  const hasFormal = includesAny(normalized, formalMarkers)
+function detectRegister(sentence: string, language: WordLanguage): Register {
+  const normalized = sentence.toLocaleLowerCase(language === 'ru' ? 'ru-RU' : 'en-US')
+  const hasInformal = includesAny(
+    normalized,
+    language === 'ru' ? informalMarkers : englishInformalMarkers,
+  )
+  const hasFormal = includesAny(
+    normalized,
+    language === 'ru' ? formalMarkers : englishFormalMarkers,
+  )
 
   if (hasInformal && hasFormal) {
     return 'mixed'
@@ -72,29 +97,37 @@ export function analyzeWordUsageInSentence(
   word: string,
   styles: WordStyle[],
   sentence: string,
+  language: WordLanguage = 'ru',
 ): ContextAnalysisResult {
   const cleanedSentence = sentence.trim()
-  const register = detectRegister(cleanedSentence)
+  const register = detectRegister(cleanedSentence, language)
   const hasWord = isWordPresent(word, cleanedSentence)
+  const isRussian = language === 'ru'
 
   if (!cleanedSentence) {
     return {
       register: 'neutral',
-      summary: 'Недостаточно данных: введите предложение со словом для проверки.',
+      summary: isRussian
+        ? 'Недостаточно данных: введите предложение со словом для проверки.'
+        : 'Not enough data: enter a sentence that contains the word.',
     }
   }
 
   if (!hasWord) {
     return {
       register,
-      summary: `Слово «${word}» не найдено в предложении в точной форме. Проверь форму слова и повтори проверку.`,
+      summary: isRussian
+        ? `Слово «${word}» не найдено в предложении в точной форме. Проверь форму слова и повтори проверку.`
+        : `The word "${word}" was not found in the sentence in this exact form. Check the form and try again.`,
     }
   }
 
   if (register === 'formal' && hasStyle(styles, 'разговорное')) {
     return {
       register,
-      summary: `Слово «${word}» выглядит неуместно: формальный контекст конфликтует с разговорной пометой.`,
+      summary: isRussian
+        ? `Слово «${word}» выглядит неуместно: формальный контекст конфликтует с разговорной пометой.`
+        : `The word "${word}" may not fit: the formal context conflicts with an informal usage label.`,
     }
   }
 
@@ -104,14 +137,25 @@ export function analyzeWordUsageInSentence(
   ) {
     return {
       register,
-      summary: `Слово «${word}» может звучать тяжело: разговорный контекст и книжно-официальная помета расходятся.`,
+      summary: isRussian
+        ? `Слово «${word}» может звучать тяжело: разговорный контекст и книжно-официальная помета расходятся.`
+        : `The word "${word}" may sound too heavy: the informal context conflicts with a formal or literary label.`,
     }
   }
 
   if (register === 'mixed') {
     return {
       register,
-      summary: `Слово «${word}» использовано понятно, но в предложении смешаны разговорные и формальные маркеры.`,
+      summary: isRussian
+        ? `Слово «${word}» использовано понятно, но в предложении смешаны разговорные и формальные маркеры.`
+        : `The word "${word}" is understandable, but the sentence mixes informal and formal markers.`,
+    }
+  }
+
+  if (!isRussian) {
+    return {
+      register,
+      summary: `The word "${word}" fits the ${register === 'formal' ? 'formal' : register === 'informal' ? 'informal' : 'neutral'} context.`,
     }
   }
 

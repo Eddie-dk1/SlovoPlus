@@ -145,7 +145,7 @@ test('yandex failure still preserves the current NETWORK error flow', async () =
       (error: unknown) =>
         error instanceof Error &&
         error.name === 'DictionaryError' &&
-        /временно недоступны/i.test(error.message),
+        /temporarily unavailable/i.test(error.message),
     )
   } finally {
     globalThis.fetch = originalFetch

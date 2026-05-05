@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { russianSemanticMap } from '../../../data/russianSemanticMap'
+import type { WordLanguage } from '../../../types/word'
 
 const englishDistractors = [
   'process',
@@ -17,6 +18,7 @@ const englishDistractors = [
 interface MiniQuizProps {
   word: string
   relatedWords: string[]
+  language?: WordLanguage
 }
 
 interface QuizRound {
@@ -134,8 +136,10 @@ function buildRounds(word: string, relatedWords: string[]): QuizRound[] {
   })
 }
 
-export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
+export function MiniQuiz({ word, relatedWords, language }: MiniQuizProps) {
   const rounds = useMemo(() => buildRounds(word, relatedWords), [relatedWords, word])
+  const resolvedLanguage = language ?? (isCyrillicWord(word) ? 'ru' : 'en')
+  const isRussian = resolvedLanguage === 'ru'
   const [currentRound, setCurrentRound] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [isChecked, setIsChecked] = useState(false)
@@ -144,9 +148,13 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
   if (rounds.length === 0) {
     return (
       <section className="surface-hover rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Мини-квиз</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          {isRussian ? 'Мини-квиз' : 'Mini quiz'}
+        </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Квиз пока недоступен для этого слова.
+          {isRussian
+            ? 'Квиз пока недоступен для этого слова.'
+            : 'The quiz is not available for this word yet.'}
         </p>
       </section>
     )
@@ -158,9 +166,11 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
   if (isCompleted) {
     return (
       <section className="surface-hover rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Мини-квиз</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          {isRussian ? 'Мини-квиз' : 'Mini quiz'}
+        </h2>
         <p className="mt-2 text-slate-600">
-          Результат: {score} из {rounds.length}
+          {isRussian ? 'Результат' : 'Result'}: {score} {isRussian ? 'из' : 'of'} {rounds.length}
         </p>
         <button
           type="button"
@@ -172,7 +182,7 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
           }}
           className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
         >
-          Пройти ещё раз
+          {isRussian ? 'Пройти ещё раз' : 'Try again'}
         </button>
       </section>
     )
@@ -180,9 +190,11 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
 
   return (
     <section className="surface-hover rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Мини-квиз</h2>
+      <h2 className="text-lg font-semibold text-slate-900">
+        {isRussian ? 'Мини-квиз' : 'Mini quiz'}
+      </h2>
       <p className="mt-2 text-slate-600">
-        Вопрос {currentRound + 1} из {rounds.length}
+        {isRussian ? 'Вопрос' : 'Question'} {currentRound + 1} {isRussian ? 'из' : 'of'} {rounds.length}
       </p>
       <p className="mt-1 text-slate-700">{round.prompt}</p>
 
@@ -219,7 +231,7 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
           disabled={!selected}
           className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Проверить
+          {isRussian ? 'Проверить' : 'Check'}
         </button>
       ) : (
         <button
@@ -231,7 +243,9 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
           }}
           className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
         >
-          {currentRound + 1 === rounds.length ? 'Завершить' : 'Следующий вопрос'}
+          {currentRound + 1 === rounds.length
+            ? isRussian ? 'Завершить' : 'Finish'
+            : isRussian ? 'Следующий вопрос' : 'Next question'}
         </button>
       )}
 
@@ -245,8 +259,10 @@ export function MiniQuiz({ word, relatedWords }: MiniQuizProps) {
           ].join(' ')}
         >
           {selected === round.correct
-            ? 'Верно!'
-            : `Почти. Более точный вариант: «${round.correct}».`}
+            ? isRussian ? 'Верно!' : 'Correct.'
+            : isRussian
+              ? `Почти. Более точный вариант: «${round.correct}».`
+              : `Not quite. The closer option is "${round.correct}".`}
         </p>
       ) : null}
     </section>

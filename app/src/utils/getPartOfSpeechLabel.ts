@@ -1,4 +1,6 @@
-const partOfSpeechMap: Record<string, string> = {
+import type { WordLanguage } from '../types/word'
+
+const russianPartOfSpeechMap: Record<string, string> = {
   noun: 'существительное',
   verb: 'глагол',
   adjective: 'прилагательное',
@@ -14,16 +16,36 @@ const partOfSpeechMap: Record<string, string> = {
   idiom: 'идиома',
 }
 
+const englishPartOfSpeechMap: Record<string, string> = {
+  noun: 'noun',
+  verb: 'verb',
+  adjective: 'adjective',
+  adverb: 'adverb',
+  pronoun: 'pronoun',
+  preposition: 'preposition',
+  conjunction: 'conjunction',
+  interjection: 'interjection',
+  particle: 'particle',
+  numeral: 'numeral',
+  article: 'article',
+  phrase: 'phrase',
+  idiom: 'idiom',
+}
+
 function normalizePart(part: string): string {
   return part.trim().toLowerCase().replace(/[()]/g, '')
 }
 
-function mapSinglePart(part: string): string {
+function mapSinglePart(part: string, language: WordLanguage): string {
   const normalized = normalizePart(part)
-  return partOfSpeechMap[normalized] ?? part
+  const map = language === 'ru' ? russianPartOfSpeechMap : englishPartOfSpeechMap
+  return map[normalized] ?? part
 }
 
-export function getPartOfSpeechLabel(partOfSpeech?: string): string | undefined {
+export function getPartOfSpeechLabel(
+  partOfSpeech?: string,
+  language: WordLanguage = 'ru',
+): string | undefined {
   if (!partOfSpeech) {
     return undefined
   }
@@ -38,7 +60,7 @@ export function getPartOfSpeechLabel(partOfSpeech?: string): string | undefined 
   const mapped = tokens
     .map((token) => token.trim())
     .filter((token) => Boolean(token))
-    .map((token) => mapSinglePart(token))
+    .map((token) => mapSinglePart(token, language))
 
   if (mapped.length === 0) {
     return partOfSpeech

@@ -23,15 +23,15 @@ function buildNaturalRussianExamples(query: string, partOfSpeech?: string): stri
 
   if (isVerb) {
     return [
-      `Он любит ${word} по утрам в парке.`,
-      `Мы начали ${word} сразу после разминки.`,
+      `Важно ${word} это действие в подходящем контексте.`,
+      `Мы начали ${word} задачу после обсуждения плана.`,
     ]
   }
 
   if (normalizedPos === 'adjective') {
     return [
-      `Этот пример звучит ${word} в новом тексте.`,
-      `Его тон стал ${word} и спокойным.`,
+      `${titleWord} образ помогает точнее передать мысль.`,
+      `Автор выбрал ${word} пример для объяснения темы.`,
     ]
   }
 
@@ -201,7 +201,9 @@ export function isGeneratedExample(example: string, query: string): boolean {
     normalized.includes(`слово «${normalizedQuery}» употребляется`) ||
     normalized.includes(`перед использованием «${normalizedQuery}»`) ||
     normalized.includes(`the word "${normalizedQuery}" should match`) ||
-    normalized.includes(`before using "${normalizedQuery}"`)
+    normalized.includes(`before using "${normalizedQuery}"`) ||
+    normalized.includes(`in this sentence, the word "${normalizedQuery}"`) ||
+    normalized.includes(`the exact meaning of "${normalizedQuery}"`)
   )
 }
 

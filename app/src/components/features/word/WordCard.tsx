@@ -1,4 +1,5 @@
 import type { WordData } from '../../../types/word'
+import { detectWordLanguage } from '../../../utils/language'
 import { getPartOfSpeechLabel } from '../../../utils/getPartOfSpeechLabel'
 import { FavoriteToggle } from './FavoriteToggle'
 import { StyleBadge } from './StyleBadge'
@@ -10,27 +11,35 @@ interface WordCardProps {
 }
 
 export function WordCard({ data, isFavorite, onToggleFavorite }: WordCardProps) {
-  const partOfSpeechLabel = getPartOfSpeechLabel(data.partOfSpeech)
+  const language = data.language ?? detectWordLanguage(data.word) ?? 'ru'
+  const isRussian = language === 'ru'
+  const partOfSpeechLabel = getPartOfSpeechLabel(data.partOfSpeech, language)
   const sourceLabelMap: Record<WordData['source'], string> = {
-    api: 'Словарное толкование',
-    semantic_assist: 'Семантическое пояснение',
-    local_override: 'Локальное определение',
-    fallback: 'Ограниченные данные',
+    api: isRussian ? 'Словарное толкование' : 'Dictionary entry',
+    semantic_assist: isRussian ? 'Семантическое пояснение' : 'Semantic note',
+    local_override: isRussian ? 'Локальное определение' : 'Local entry',
+    fallback: isRussian ? 'Ограниченные данные' : 'Limited data',
   }
 
   return (
     <section className="surface-hover rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Карточка слова</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+            {isRussian ? 'Карточка слова' : 'Word card'}
+          </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
             {data.word}
           </h1>
           {partOfSpeechLabel ? (
-            <p className="mt-2 text-sm text-slate-500">Часть речи: {partOfSpeechLabel}</p>
+            <p className="mt-2 text-sm text-slate-500">
+              {isRussian ? 'Часть речи' : 'Part of speech'}: {partOfSpeechLabel}
+            </p>
           ) : null}
           <p className="text-sm text-slate-500">
-            Проверь определение, примеры и рекомендации перед использованием в тексте.
+            {isRussian
+              ? 'Проверь определение, примеры и рекомендации перед использованием в тексте.'
+              : 'Check the definition, examples, and usage notes before using the word.'}
           </p>
         </div>
 
@@ -50,7 +59,7 @@ export function WordCard({ data, isFavorite, onToggleFavorite }: WordCardProps) 
       {data.style.length > 0 ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {data.style.map((style) => (
-            <StyleBadge key={style} style={style} />
+            <StyleBadge key={style} style={style} language={language} />
           ))}
         </div>
       ) : null}

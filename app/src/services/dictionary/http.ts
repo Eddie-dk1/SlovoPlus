@@ -6,6 +6,7 @@ import {
 
 interface FetchResilientOptions {
   signal?: AbortSignal
+  headers?: HeadersInit
   timeoutMs?: number
   retries?: number
   retryDelayMs?: number
@@ -66,6 +67,7 @@ export async function fetchWithResilience(
   url: string,
   {
     signal,
+    headers,
     timeoutMs = DICTIONARY_FETCH_TIMEOUT_MS,
     retries = DICTIONARY_FETCH_RETRIES,
     retryDelayMs = DICTIONARY_FETCH_RETRY_DELAY_MS,
@@ -85,7 +87,7 @@ export async function fetchWithResilience(
     signal?.addEventListener('abort', abortFromParent, { once: true })
 
     try {
-      const response = await fetch(url, { signal: controller.signal })
+      const response = await fetch(url, { headers, signal: controller.signal })
 
       if (attempt < maxAttempts && isRetryableStatus(response.status)) {
         await wait(retryDelayMs, signal)
