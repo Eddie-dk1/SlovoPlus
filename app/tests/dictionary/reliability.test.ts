@@ -186,6 +186,7 @@ test('fallback chain continues when first provider fails with 500', async () => 
   try {
     const data = await fetchWordData('тест')
     assert.equal(data.source, 'api')
+    assert.equal(data.sourceProvider, 'free_dictionary')
     assert.match(data.definition, /Проверочное слово/)
     assert.equal(
       Array.from(attempts.entries()).some(
@@ -343,6 +344,48 @@ test('network statuses 429/500 across providers result in controlled NETWORK err
         error.code === 'NETWORK' &&
         /temporarily unavailable/i.test(error.message),
     )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('fetchWordData caches remote dictionary results by normalized word and language', async () => {
+  const originalFetch = globalThis.fetch
+  let fetchCalls = 0
+
+  globalThis.fetch = async () => {
+    fetchCalls += 1
+    return new Response(
+      `
+        <h1>Русский</h1>
+        <section><h3>Морфологические и синтаксические свойства</h3>
+          <p><a>Существительное</a>, неодушевленное.</p>
+        </section>
+        <section><h4 id="Значение">Значение</h4>
+          <ol>
+            <li>условное слово для проверки словарного кэша
+              <span class="example-fullblock">◆ <span class="example-block">Кэшслово помогает проверить повторный запрос.</span></span>
+            </li>
+          </ol>
+        </section>
+      `,
+      {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      },
+    )
+  }
+
+  try {
+    const first = await fetchWordData('Кэшслово')
+    const second = await fetchWordData('КЭШСЛОВО')
+
+    assert.equal(first.word, 'Кэшслово')
+    assert.equal(first.sourceProvider, 'wiktionary')
+    assert.equal(second.word, 'КЭШСЛОВО')
+    assert.equal(second.sourceProvider, 'wiktionary')
+    assert.match(second.definition, /проверки словарного кэша/)
+    assert.equal(fetchCalls, 1)
   } finally {
     globalThis.fetch = originalFetch
   }

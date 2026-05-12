@@ -11,6 +11,16 @@ export type WordDataSource =
   | 'local_override'
   | 'fallback'
 
+export type WordDataProvider =
+  | 'wiktionary'
+  | 'yandex'
+  | 'relyc'
+  | 'free_dictionary'
+  | 'legacy_dictionary'
+  | 'datamuse'
+  | 'semantic'
+  | 'local'
+
 export type WordLanguage = 'ru' | 'en'
 
 export interface WordData {
@@ -25,6 +35,7 @@ export interface WordData {
   mistakes: string[]
   relatedWords: string[]
   source: WordDataSource
+  sourceProvider?: WordDataProvider
 }
 
 export interface DictionaryApiEntry {

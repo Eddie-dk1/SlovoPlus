@@ -112,6 +112,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+}
+
 function parseEnglishDefinitionPayload(raw: unknown): EnglishDefinitionPayload | null {
   if (!isRecord(raw)) {
     return null
@@ -125,16 +129,20 @@ export function fromEnglishWiktionaryDefinition(
   rawPayload: unknown,
 ): WordData | null {
   const payload = parseEnglishDefinitionPayload(rawPayload)
-  const entries = payload?.en ?? []
+  const entries = Array.isArray(payload?.en)
+    ? payload.en.filter((entry): entry is EnglishDefinitionGroup => isRecord(entry))
+    : []
 
   if (entries.length === 0) {
     return null
   }
 
   for (const entry of entries) {
-    const definitions = Array.isArray(entry.definitions) ? entry.definitions : []
+    const definitions = Array.isArray(entry.definitions)
+      ? entry.definitions.filter((item): item is EnglishDefinitionItem => isRecord(item))
+      : []
     const firstDefinition = definitions
-      .map((item) => cleanDefinition(item.definition ?? '', 'en'))
+      .map((item) => cleanDefinition(typeof item.definition === 'string' ? item.definition : '', 'en'))
       .find(Boolean)
 
     if (!firstDefinition) {
@@ -143,14 +151,23 @@ export function fromEnglishWiktionaryDefinition(
 
     const examples = uniqueValues(
       definitions.flatMap((item) => [
-        ...(item.parsedExamples ?? []).map((example) => example.example ?? ''),
-        ...(item.examples ?? []),
+        ...(Array.isArray(item.parsedExamples)
+          ? item.parsedExamples
+              .filter(isRecord)
+              .map((example) => typeof example.example === 'string' ? example.example : '')
+          : []),
+        ...stringArray(item.examples),
       ]),
       8,
     )
     const relatedWords = sanitizeRelatedWords(
       query,
-      uniqueValues(definitions.flatMap((item) => extractLinkTitles(item.definition ?? '', 'en')), 16),
+      uniqueValues(
+        definitions.flatMap((item) =>
+          extractLinkTitles(typeof item.definition === 'string' ? item.definition : '', 'en'),
+        ),
+        16,
+      ),
       false,
     )
 
@@ -218,6 +235,18 @@ function extractListItems(html: string): string[] {
 
   while ((match = itemPattern.exec(orderedList))) {
     items.push(match[0])
+  }
+
+  if (items.length > 0) {
+    return items
+  }
+
+  const openItemPattern = /<li\b[^>]*>([\s\S]*?)(?=<li\b|<\/ol>|$)/gi
+  while ((match = openItemPattern.exec(orderedList))) {
+    const itemHtml = match[1]?.trim()
+    if (itemHtml) {
+      items.push(`<li>${itemHtml}</li>`)
+    }
   }
 
   return items

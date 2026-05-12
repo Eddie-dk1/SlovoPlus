@@ -10,8 +10,11 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 test('yandex success survives example enrichment failure', async () => {
   process.env.VITE_YANDEX_DICTIONARY_API_KEY = 'test-key'
-  const { fetchWordData } = await import('../../src/services/dictionary/index')
+  const { clearWordDataCacheForTests, fetchWordData } = await import(
+    '../../src/services/dictionary/index'
+  )
   const originalFetch = globalThis.fetch
+  clearWordDataCacheForTests()
 
   globalThis.fetch = async (input: URL | RequestInfo): Promise<Response> => {
     const url = typeof input === 'string' ? input : input.url
@@ -50,6 +53,7 @@ test('yandex success survives example enrichment failure', async () => {
     assert.match(data.definition, /проверка/i)
     assert.equal(data.examples.length > 0, true)
   } finally {
+    clearWordDataCacheForTests()
     globalThis.fetch = originalFetch
     delete process.env.VITE_YANDEX_DICTIONARY_API_KEY
   }
@@ -57,9 +61,12 @@ test('yandex success survives example enrichment failure', async () => {
 
 test('yandex success still enriches examples when free dictionary is available', async () => {
   process.env.VITE_YANDEX_DICTIONARY_API_KEY = 'test-key'
-  const { fetchWordData } = await import('../../src/services/dictionary/index')
+  const { clearWordDataCacheForTests, fetchWordData } = await import(
+    '../../src/services/dictionary/index'
+  )
   const originalFetch = globalThis.fetch
   let freeExamplesCalls = 0
+  clearWordDataCacheForTests()
 
   globalThis.fetch = async (input: URL | RequestInfo): Promise<Response> => {
     const url = typeof input === 'string' ? input : input.url
@@ -127,6 +134,7 @@ test('yandex success still enriches examples when free dictionary is available',
     )
     assert.equal(freeExamplesCalls, 1)
   } finally {
+    clearWordDataCacheForTests()
     globalThis.fetch = originalFetch
     delete process.env.VITE_YANDEX_DICTIONARY_API_KEY
   }
@@ -134,8 +142,11 @@ test('yandex success still enriches examples when free dictionary is available',
 
 test('yandex failure still preserves the current NETWORK error flow', async () => {
   process.env.VITE_YANDEX_DICTIONARY_API_KEY = 'test-key'
-  const { fetchWordData } = await import('../../src/services/dictionary/index')
+  const { clearWordDataCacheForTests, fetchWordData } = await import(
+    '../../src/services/dictionary/index'
+  )
   const originalFetch = globalThis.fetch
+  clearWordDataCacheForTests()
 
   globalThis.fetch = async () => jsonResponse({ error: 'unavailable' }, 500)
 
@@ -148,6 +159,7 @@ test('yandex failure still preserves the current NETWORK error flow', async () =
         /temporarily unavailable/i.test(error.message),
     )
   } finally {
+    clearWordDataCacheForTests()
     globalThis.fetch = originalFetch
     delete process.env.VITE_YANDEX_DICTIONARY_API_KEY
   }

@@ -1,5 +1,5 @@
 import { localDictionary } from '../../data/localDictionary'
-import type { WordData } from '../../types/word'
+import type { WordData, WordDataProvider } from '../../types/word'
 import { detectWordLanguage, isSupportedLookupText } from '../../utils/language'
 import { normalizeWord } from '../../utils/normalizeWord'
 import { DictionaryError } from './errors'
@@ -19,6 +19,19 @@ import {
   type WordDataQualityTier,
 } from './quality'
 
+const WORD_DATA_CACHE_LIMIT = 80
+const wordDataCache = new Map<string, WordData>()
+
+interface DictionaryProviderStep {
+  id: string
+  sourceProvider: WordDataProvider
+  fetch: () => Promise<WordData | null>
+}
+
+export function clearWordDataCacheForTests(): void {
+  wordDataCache.clear()
+}
+
 function sanitizeDisplayWord(rawQuery: string, normalizedQuery: string): string {
   const cleaned = rawQuery
     .trim()
@@ -35,6 +48,55 @@ function withDisplayWord(data: WordData, displayWord: string): WordData {
   return {
     ...data,
     word: displayWord,
+  }
+}
+
+function getCacheKey(query: string, language: 'ru' | 'en'): string {
+  return `${language}:${query}`
+}
+
+function cloneWordData(data: WordData): WordData {
+  return {
+    ...data,
+    examples: [...data.examples],
+    style: [...data.style],
+    usageTips: [...data.usageTips],
+    mistakes: [...data.mistakes],
+    relatedWords: [...data.relatedWords],
+  }
+}
+
+function getCachedWordData(query: string, language: 'ru' | 'en'): WordData | null {
+  const cacheKey = getCacheKey(query, language)
+  const cached = wordDataCache.get(cacheKey)
+
+  if (!cached) {
+    return null
+  }
+
+  wordDataCache.delete(cacheKey)
+  wordDataCache.set(cacheKey, cached)
+  return cloneWordData(cached)
+}
+
+function setCachedWordData(
+  query: string,
+  language: 'ru' | 'en',
+  data: WordData,
+): void {
+  const cacheKey = getCacheKey(query, language)
+
+  if (wordDataCache.has(cacheKey)) {
+    wordDataCache.delete(cacheKey)
+  }
+
+  wordDataCache.set(cacheKey, cloneWordData(data))
+
+  if (wordDataCache.size > WORD_DATA_CACHE_LIMIT) {
+    const oldestKey = wordDataCache.keys().next().value
+    if (oldestKey) {
+      wordDataCache.delete(oldestKey)
+    }
   }
 }
 
@@ -115,6 +177,198 @@ async function enrichEnglishRelatedWords(
   }
 }
 
+function createRussianProviderChain(
+  query: string,
+  signal?: AbortSignal,
+): DictionaryProviderStep[] {
+  return [
+    {
+      id: 'wiktionary-ru',
+      sourceProvider: 'wiktionary',
+      fetch: () => fetchFromWiktionaryApi(query, 'ru', signal),
+    },
+    {
+      id: 'relyc',
+      sourceProvider: 'relyc',
+      fetch: () => fetchFromRelycDictionaryApi(query, signal),
+    },
+    {
+      id: 'yandex-ru',
+      sourceProvider: 'yandex',
+      fetch: async () => {
+        const yandexRu = await fetchFromYandexDictionaryApi(query, 'ru-ru', signal)
+        if (!yandexRu) {
+          return null
+        }
+
+        const extraExamples = await fetchBestEffortExamples(query, 'ru', signal)
+        return ensureCompleteWordData(query, {
+          ...yandexRu,
+          examples: pickBestExamples(
+            query,
+            true,
+            yandexRu.partOfSpeech,
+            yandexRu.examples,
+            extraExamples,
+          ),
+        })
+      },
+    },
+    {
+      id: 'free-dictionary-ru',
+      sourceProvider: 'free_dictionary',
+      fetch: () => fetchFromFreeDictionaryApi(query, 'ru', signal),
+    },
+    {
+      id: 'free-dictionary-all',
+      sourceProvider: 'free_dictionary',
+      fetch: () => fetchFromFreeDictionaryApi(query, 'all', signal),
+    },
+    {
+      id: 'legacy-ru',
+      sourceProvider: 'legacy_dictionary',
+      fetch: () => fetchFromLegacyApi(query, 'ru', signal),
+    },
+    {
+      id: 'semantic-fallback',
+      sourceProvider: 'semantic',
+      fetch: async () => fromSemanticFallback(query),
+    },
+  ]
+}
+
+function createEnglishProviderChain(
+  query: string,
+  signal?: AbortSignal,
+): DictionaryProviderStep[] {
+  return [
+    {
+      id: 'wiktionary-en',
+      sourceProvider: 'wiktionary',
+      fetch: async () => {
+        const wiktionaryEn = await fetchFromWiktionaryApi(query, 'en', signal)
+        return wiktionaryEn
+          ? enrichEnglishRelatedWords(wiktionaryEn, query, signal)
+          : null
+      },
+    },
+    {
+      id: 'relyc',
+      sourceProvider: 'relyc',
+      fetch: () => fetchFromRelycDictionaryApi(query, signal),
+    },
+    {
+      id: 'yandex-en',
+      sourceProvider: 'yandex',
+      fetch: async () => {
+        const yandexEn = await fetchFromYandexDictionaryApi(query, 'en-en', signal)
+        if (!yandexEn) {
+          return null
+        }
+
+        const extraExamples = await fetchBestEffortExamples(query, 'en', signal)
+        return ensureCompleteWordData(query, {
+          ...yandexEn,
+          examples: pickBestExamples(
+            query,
+            false,
+            yandexEn.partOfSpeech,
+            yandexEn.examples,
+            extraExamples,
+          ),
+        })
+      },
+    },
+    {
+      id: 'free-dictionary-en',
+      sourceProvider: 'free_dictionary',
+      fetch: () => fetchFromFreeDictionaryApi(query, 'en', signal),
+    },
+    {
+      id: 'free-dictionary-all',
+      sourceProvider: 'free_dictionary',
+      fetch: () => fetchFromFreeDictionaryApi(query, 'all', signal),
+    },
+    {
+      id: 'legacy-en',
+      sourceProvider: 'legacy_dictionary',
+      fetch: () => fetchFromLegacyApi(query, 'en', signal),
+    },
+  ]
+}
+
+async function resolveFromProviderChain(
+  query: string,
+  language: 'ru' | 'en',
+  signal?: AbortSignal,
+): Promise<WordData> {
+  let hasServiceErrors = false
+  let bestCandidate: WordData | null = null
+  const targetTier: WordDataQualityTier = 'dictionary'
+  const providerChain =
+    language === 'ru'
+      ? createRussianProviderChain(query, signal)
+      : createEnglishProviderChain(query, signal)
+
+  const considerCandidate = (candidate: WordData | null): boolean => {
+    if (!candidate) {
+      return false
+    }
+
+    if (isBetterWordDataCandidate(query, candidate, bestCandidate)) {
+      bestCandidate = candidate
+    }
+
+    const qualityTier = detectWordDataQualityTier(query, candidate)
+    return isTierAtLeast(qualityTier, targetTier)
+  }
+
+  const tryProvider = async (
+    provider: DictionaryProviderStep,
+  ): Promise<WordData | null> => {
+    try {
+      return await provider.fetch()
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error
+      }
+
+      hasServiceErrors = true
+      return null
+    }
+  }
+
+  for (const provider of providerChain) {
+    const rawCandidate = await tryProvider(provider)
+    const candidate = rawCandidate
+      ? {
+          ...rawCandidate,
+          sourceProvider: provider.sourceProvider,
+        }
+      : null
+
+    if (candidate && considerCandidate(candidate)) {
+      return candidate
+    }
+  }
+
+  if (bestCandidate) {
+    return bestCandidate
+  }
+
+  if (hasServiceErrors) {
+    throw new DictionaryError(
+      getLanguageAwareErrorMessage(language, 'NETWORK'),
+      'NETWORK',
+    )
+  }
+
+  throw new DictionaryError(
+    getLanguageAwareErrorMessage(language, 'NOT_FOUND', query),
+    'NOT_FOUND',
+  )
+}
+
 export async function fetchWordData(
   rawQuery: string,
   signal?: AbortSignal,
@@ -140,190 +394,21 @@ export async function fetchWordData(
       {
         ...mergeWithHints(localData, query),
         language,
+        sourceProvider: 'local',
       },
       displayWord,
     )
   }
 
-  const isRussianInput = language === 'ru'
-  let hasServiceErrors = false
-  let bestCandidate: WordData | null = null
-  const targetTier: WordDataQualityTier = 'dictionary'
-
-  const considerCandidate = (candidate: WordData | null): boolean => {
-    if (!candidate) {
-      return false
-    }
-
-    if (isBetterWordDataCandidate(query, candidate, bestCandidate)) {
-      bestCandidate = candidate
-    }
-
-    const qualityTier = detectWordDataQualityTier(query, candidate)
-    return isTierAtLeast(qualityTier, targetTier)
-  }
-
-  const tryProvider = async (
-    provider: () => Promise<WordData | null>,
-  ): Promise<WordData | null> => {
-    try {
-      return await provider()
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        throw error
-      }
-
-      hasServiceErrors = true
-      return null
-    }
+  const cachedData = getCachedWordData(query, language)
+  if (cachedData) {
+    return withDisplayWord(cachedData, displayWord)
   }
 
   try {
-    if (isRussianInput) {
-      const wiktionaryRu = await tryProvider(() =>
-        fetchFromWiktionaryApi(query, 'ru', signal),
-      )
-      if (wiktionaryRu && considerCandidate(wiktionaryRu)) {
-        return withDisplayWord(wiktionaryRu, displayWord)
-      }
-
-      const relycRu = await tryProvider(() => fetchFromRelycDictionaryApi(query, signal))
-      if (relycRu && considerCandidate(relycRu)) {
-        return withDisplayWord(relycRu, displayWord)
-      }
-
-      const yandexRu = await tryProvider(() =>
-        fetchFromYandexDictionaryApi(query, 'ru-ru', signal),
-      )
-      if (yandexRu) {
-        const extraExamples = await fetchBestEffortExamples(query, 'ru', signal)
-
-        const enrichedYandex = ensureCompleteWordData(query, {
-          ...yandexRu,
-          examples: pickBestExamples(
-            query,
-            true,
-            yandexRu.partOfSpeech,
-            yandexRu.examples,
-            extraExamples,
-          ),
-        })
-
-        if (considerCandidate(enrichedYandex)) {
-          return withDisplayWord(enrichedYandex, displayWord)
-        }
-      }
-
-      const freeRu = await tryProvider(() =>
-        fetchFromFreeDictionaryApi(query, 'ru', signal),
-      )
-      if (freeRu && considerCandidate(freeRu)) {
-        return withDisplayWord(freeRu, displayWord)
-      }
-
-      const freeAll = await tryProvider(() =>
-        fetchFromFreeDictionaryApi(query, 'all', signal),
-      )
-      if (freeAll && considerCandidate(freeAll)) {
-        return withDisplayWord(freeAll, displayWord)
-      }
-
-      const legacyRu = await tryProvider(() => fetchFromLegacyApi(query, 'ru', signal))
-      if (legacyRu && considerCandidate(legacyRu)) {
-        return withDisplayWord(legacyRu, displayWord)
-      }
-
-      const semanticFallback = fromSemanticFallback(query)
-      if (semanticFallback && considerCandidate(semanticFallback)) {
-        return withDisplayWord(semanticFallback, displayWord)
-      }
-
-      if (bestCandidate) {
-        return withDisplayWord(bestCandidate, displayWord)
-      }
-
-      if (hasServiceErrors) {
-        throw new DictionaryError(
-          getLanguageAwareErrorMessage(language, 'NETWORK'),
-          'NETWORK',
-        )
-      }
-
-      throw new DictionaryError(
-        getLanguageAwareErrorMessage(language, 'NOT_FOUND', query),
-        'NOT_FOUND',
-      )
-    }
-
-    const wiktionaryEn = await tryProvider(() =>
-      fetchFromWiktionaryApi(query, 'en', signal),
-    )
-    if (wiktionaryEn && considerCandidate(wiktionaryEn)) {
-      return withDisplayWord(
-        await enrichEnglishRelatedWords(wiktionaryEn, query, signal),
-        displayWord,
-      )
-    }
-
-    const relycAny = await tryProvider(() => fetchFromRelycDictionaryApi(query, signal))
-    if (relycAny && considerCandidate(relycAny)) {
-      return withDisplayWord(relycAny, displayWord)
-    }
-
-    const yandexEn = await tryProvider(() =>
-      fetchFromYandexDictionaryApi(query, 'en-en', signal),
-    )
-    if (yandexEn) {
-      const extraExamples = await fetchBestEffortExamples(query, 'en', signal)
-
-      const enrichedYandex = ensureCompleteWordData(query, {
-        ...yandexEn,
-        examples: pickBestExamples(
-          query,
-          false,
-          yandexEn.partOfSpeech,
-          yandexEn.examples,
-          extraExamples,
-        ),
-      })
-
-      if (considerCandidate(enrichedYandex)) {
-        return withDisplayWord(enrichedYandex, displayWord)
-      }
-    }
-
-    const freeEn = await tryProvider(() => fetchFromFreeDictionaryApi(query, 'en', signal))
-    if (freeEn && considerCandidate(freeEn)) {
-      return withDisplayWord(freeEn, displayWord)
-    }
-
-    const freeAll = await tryProvider(() =>
-      fetchFromFreeDictionaryApi(query, 'all', signal),
-    )
-    if (freeAll && considerCandidate(freeAll)) {
-      return withDisplayWord(freeAll, displayWord)
-    }
-
-    const legacyEn = await tryProvider(() => fetchFromLegacyApi(query, 'en', signal))
-    if (legacyEn && considerCandidate(legacyEn)) {
-      return withDisplayWord(legacyEn, displayWord)
-    }
-
-    if (bestCandidate) {
-      return withDisplayWord(bestCandidate, displayWord)
-    }
-
-    if (hasServiceErrors) {
-      throw new DictionaryError(
-        getLanguageAwareErrorMessage(language, 'NETWORK'),
-        'NETWORK',
-      )
-    }
-
-    throw new DictionaryError(
-      getLanguageAwareErrorMessage(language, 'NOT_FOUND', query),
-      'NOT_FOUND',
-    )
+    const data = await resolveFromProviderChain(query, language, signal)
+    setCachedWordData(query, language, data)
+    return withDisplayWord(data, displayWord)
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error

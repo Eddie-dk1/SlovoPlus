@@ -63,6 +63,13 @@ export function ContextAnalyzer({ word, styles, language = 'ru' }: ContextAnalyz
           {isRussian ? 'Контекст' : 'Context'}: <strong>{labels[result.register]}</strong>
         </p>
         <p className="mt-2">{result.summary}</p>
+        {result.reasons.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-xs text-slate-500">
+            {result.reasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </section>
   )
