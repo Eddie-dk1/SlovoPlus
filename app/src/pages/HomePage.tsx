@@ -3,15 +3,18 @@ import { FavoritesList } from '../components/features/home/FavoritesList'
 import { RecentSearches } from '../components/features/home/RecentSearches'
 import { WordOfTheDay } from '../components/features/home/WordOfTheDay'
 import { SearchBar } from '../components/ui/SearchBar'
-import { searchSuggestions } from '../data/searchSuggestions'
+import { searchSuggestionsByLanguage } from '../data/searchSuggestions'
 import { useFavorites } from '../hooks/useFavorites'
 import { useRecentSearches } from '../hooks/useRecentSearches'
+import { useI18n } from '../i18n/i18nContext'
 
 export function HomePage() {
   const navigate = useNavigate()
+  const { language, t } = useI18n()
   const { recentSearches, addRecentSearch } = useRecentSearches()
   const { favorites } = useFavorites()
-  const featuredWords = searchSuggestions.slice(0, 6)
+  const suggestions = searchSuggestionsByLanguage[language]
+  const featuredWords = suggestions.slice(0, 6)
 
   const handleSearch = (value: string) => {
     const normalized = value.trim()
@@ -25,30 +28,33 @@ export function HomePage() {
   }
 
   const openRandomWord = () => {
-    if (searchSuggestions.length === 0) {
+    if (suggestions.length === 0) {
       return
     }
 
-    const randomIndex = Math.floor(Math.random() * searchSuggestions.length)
-    handleSearch(searchSuggestions[randomIndex])
+    const randomIndex = Math.floor(Math.random() * suggestions.length)
+    handleSearch(suggestions[randomIndex])
   }
 
   return (
     <div className="page-enter space-y-6">
       <section className="surface-hover overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-blue-50/40 to-cyan-50/50 p-8 shadow-sm md:p-10">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-          Поиск и анализ слова
+          {t.home.eyebrow}
         </p>
         <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
-          Умный словарь русской лексики
+          {t.home.title}
         </h1>
-        <p className="mt-4 max-w-2xl text-slate-600">
-          Введи слово, чтобы получить определение, примеры, стилистику и
-          рекомендации по употреблению.
-        </p>
+        <p className="mt-4 max-w-2xl text-slate-600">{t.home.description}</p>
 
         <div className="mt-8">
-          <SearchBar onSearch={handleSearch} suggestions={searchSuggestions} />
+          <SearchBar
+            placeholder={t.search.placeholder}
+            language={language}
+            labels={t.search}
+            onSearch={handleSearch}
+            suggestions={suggestions}
+          />
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
@@ -57,7 +63,7 @@ export function HomePage() {
             onClick={openRandomWord}
             className="inline-flex rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
           >
-            Случайное слово
+            {t.home.randomWord}
           </button>
           {featuredWords.map((word) => (
             <button
@@ -73,11 +79,24 @@ export function HomePage() {
       </section>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <WordOfTheDay />
-        <RecentSearches searches={recentSearches} />
+        <WordOfTheDay
+          language={language}
+          title={t.home.wordOfTheDay}
+          description={t.home.wordOfTheDayDescription}
+          actionLabel={t.home.openCard}
+        />
+        <RecentSearches
+          searches={recentSearches}
+          title={t.home.recentSearches}
+          emptyMessage={t.home.recentEmpty}
+        />
       </div>
 
-      <FavoritesList favorites={favorites} />
+      <FavoritesList
+        favorites={favorites}
+        title={t.home.favorites}
+        emptyMessage={t.home.favoritesEmpty}
+      />
     </div>
   )
 }

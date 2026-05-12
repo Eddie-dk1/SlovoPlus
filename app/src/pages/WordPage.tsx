@@ -11,40 +11,36 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { Loader } from '../components/ui/Loader'
 import { SearchBar } from '../components/ui/SearchBar'
-import { searchSuggestions } from '../data/searchSuggestions'
+import { searchSuggestionsByLanguage } from '../data/searchSuggestions'
 import { useFavorites } from '../hooks/useFavorites'
 import { useRecentSearches } from '../hooks/useRecentSearches'
 import { useWordSearch } from '../hooks/useWordSearch'
+import { useI18n } from '../i18n/i18nContext'
+import type { Translations } from '../i18n/translations'
 import { detectWordLanguage } from '../utils/language'
 
 function WordLookupResult({
   query,
   isFavorite,
   onToggleFavorite,
+  t,
 }: {
   query: string
   isFavorite: (word: string) => boolean
   onToggleFavorite: (word: string) => void
+  t: Translations
 }) {
   const { isLoading, error, data } = useWordSearch(query)
   const queryLanguage = detectWordLanguage(query) ?? 'ru'
 
   if (isLoading) {
-    return (
-      <Loader
-        label={queryLanguage === 'ru' ? 'Ищем определение...' : 'Searching definition...'}
-      />
-    )
+    return <Loader label={t.word.loading} />
   }
 
   if (error) {
     return (
       <ErrorMessage
-        message={
-          queryLanguage === 'ru'
-            ? `${error} Можно попробовать другой запрос или открыть раздел изучения.`
-            : `${error} Try another query or open the learning section.`
-        }
+        message={`${error} ${t.word.errorSuffix}`}
       />
     )
   }
@@ -52,22 +48,14 @@ function WordLookupResult({
   if (!data) {
     return (
       <EmptyState
-        title={
-          queryLanguage === 'ru'
-            ? 'Не удалось подобрать карточку'
-            : 'No word card available'
-        }
-        description={
-          queryLanguage === 'ru'
-            ? 'Попробуй более распространённое слово, проверь написание или открой учебные подборки.'
-            : 'Try a more common word, check spelling, or open learning collections.'
-        }
+        title={t.word.emptyTitle}
+        description={t.word.emptyDescription}
         primaryLink={{
-          label: queryLanguage === 'ru' ? 'Открыть раздел «Изучение»' : 'Open learning',
+          label: t.word.openLearning,
           to: '/learn',
         }}
         secondaryLink={{
-          label: queryLanguage === 'ru' ? 'Вернуться на главную' : 'Back home',
+          label: t.word.backHome,
           to: '/',
         }}
       />
@@ -114,8 +102,10 @@ export function WordPage() {
   const navigate = useNavigate()
   const query = safeDecodeRouteQuery(rawQuery)
   const queryLanguage = detectWordLanguage(query) ?? 'ru'
+  const { t } = useI18n()
   const { addRecentSearch } = useRecentSearches()
   const { isFavorite, toggleFavorite } = useFavorites()
+  const suggestions = searchSuggestionsByLanguage[queryLanguage]
 
   useEffect(() => {
     if (!query) {
@@ -140,25 +130,24 @@ export function WordPage() {
       <section className="surface-hover rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-            {queryLanguage === 'ru' ? 'Карточка слова' : 'Word card'}
+            {t.word.cardEyebrow}
           </p>
           <Link
             to="/"
             className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
           >
-            {queryLanguage === 'ru' ? 'Назад' : 'Back'}
+            {t.word.back}
           </Link>
         </div>
         <SearchBar
           initialValue={query}
+          placeholder={t.search.placeholder}
+          language={queryLanguage}
+          labels={t.search}
           onSearch={handleSearch}
-          suggestions={searchSuggestions}
+          suggestions={suggestions}
         />
-        <p className="mt-3 text-xs text-slate-500">
-          {queryLanguage === 'ru'
-            ? 'Если слово не найдено в источнике, сервис покажет аккуратное сообщение без мусорных данных.'
-            : 'If no reliable entry is found, the service shows a clear message instead of noisy data.'}
-        </p>
+        <p className="mt-3 text-xs text-slate-500">{t.word.fallbackNotice}</p>
       </section>
 
       <WordLookupResult
@@ -166,6 +155,7 @@ export function WordPage() {
         query={query}
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
+        t={t}
       />
     </div>
   )

@@ -1,9 +1,15 @@
 import { Link } from 'react-router-dom'
 
-export function RecentSearches({ searches }: { searches: string[] }) {
+interface RecentSearchesProps {
+  searches: string[]
+  title: string
+  emptyMessage: string
+}
+
+export function RecentSearches({ searches, title, emptyMessage }: RecentSearchesProps) {
   return (
     <section className="surface-hover rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Последние запросы</h2>
+      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
       {searches.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {searches.map((search) => (
@@ -18,7 +24,7 @@ export function RecentSearches({ searches }: { searches: string[] }) {
         </div>
       ) : (
         <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-          История пока пуста. Найди первое слово и вернись сюда для повторения.
+          {emptyMessage}
         </div>
       )}
     </section>

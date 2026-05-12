@@ -1,9 +1,15 @@
 import { Link } from 'react-router-dom'
 
-export function FavoritesList({ favorites }: { favorites: string[] }) {
+interface FavoritesListProps {
+  favorites: string[]
+  title: string
+  emptyMessage: string
+}
+
+export function FavoritesList({ favorites, title, emptyMessage }: FavoritesListProps) {
   return (
     <section className="surface-hover rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Избранные слова</h2>
+      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
       {favorites.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {favorites.map((word) => (
@@ -18,7 +24,7 @@ export function FavoritesList({ favorites }: { favorites: string[] }) {
         </div>
       ) : (
         <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-          Здесь будут слова, которые ты отметил для повторения.
+          {emptyMessage}
         </div>
       )}
     </section>

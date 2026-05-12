@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useI18n } from '../../i18n/i18nContext'
 
 interface ErrorMessageProps {
   message: string
@@ -7,11 +8,15 @@ interface ErrorMessageProps {
 
 export function ErrorMessage({
   message,
-  title = 'Сервис временно недоступен',
+  title,
 }: ErrorMessageProps) {
+  const { t } = useI18n()
+
   return (
     <section className="rounded-2xl border border-red-200 bg-red-50/70 p-5 shadow-sm">
-      <h2 className="text-base font-semibold text-red-900">{title}</h2>
+      <h2 className="text-base font-semibold text-red-900">
+        {title ?? t.error.title}
+      </h2>
       <p className="mt-2 text-sm text-red-800">{message}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
@@ -19,13 +24,13 @@ export function ErrorMessage({
           onClick={() => window.location.reload()}
           className="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-800"
         >
-          Обновить страницу
+          {t.error.reload}
         </button>
         <Link
           to="/learn"
           className="rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-900 transition hover:bg-red-100"
         >
-          Перейти в раздел «Изучение»
+          {t.error.learn}
         </Link>
       </div>
     </section>
