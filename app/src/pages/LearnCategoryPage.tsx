@@ -1,5 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
+import { CategoryExercises } from '../components/features/learn/CategoryExercises'
 import { categories } from '../data/categories'
+import { getLearningExercisesByCategory } from '../data/learningExercises'
 import { useLearningProgress } from '../hooks/useLearningProgress'
 import { useI18n } from '../i18n/i18nContext'
 
@@ -20,6 +22,7 @@ export function LearnCategoryPage() {
     language === 'ru' ? category.whyItMatters : category.whyItMattersEn
   const examples = language === 'ru' ? category.examples : category.examplesEn
   const progress = getProgress(language, category)
+  const exercises = getLearningExercisesByCategory(category.id)
 
   return (
     <div className="page-enter space-y-6">
@@ -107,6 +110,8 @@ export function LearnCategoryPage() {
           </div>
         ) : null}
       </section>
+
+      <CategoryExercises exercises={exercises} language={language} />
     </div>
   )
 }
