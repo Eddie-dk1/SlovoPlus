@@ -1,5 +1,6 @@
 import { categories } from '../../../data/categories'
 import type { UiLanguage } from '../../../i18n/translations'
+import type { CategoryProgress } from '../../../utils/learningProgress'
 import { CategoryCard } from './CategoryCard'
 
 interface CategoriesGridProps {
@@ -9,7 +10,10 @@ interface CategoriesGridProps {
   labels: {
     categoryLabel: string
     openMaterials: string
+    progressLabel: string
+    completedLabel: string
   }
+  getProgress: (category: (typeof categories)[number]) => CategoryProgress
 }
 
 export function CategoriesGrid({
@@ -17,6 +21,7 @@ export function CategoriesGrid({
   title,
   countLabel,
   labels,
+  getProgress,
 }: CategoriesGridProps) {
   return (
     <section>
@@ -33,6 +38,7 @@ export function CategoriesGrid({
             category={category}
             language={language}
             labels={labels}
+            progress={getProgress(category)}
           />
         ))}
       </div>

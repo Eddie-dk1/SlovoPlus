@@ -1,5 +1,6 @@
 import type { LearnCategory } from '../../../data/categories'
 import type { UiLanguage } from '../../../i18n/translations'
+import type { CategoryProgress } from '../../../utils/learningProgress'
 import { Link } from 'react-router-dom'
 
 interface CategoryCardProps {
@@ -8,10 +9,18 @@ interface CategoryCardProps {
   labels: {
     categoryLabel: string
     openMaterials: string
+    progressLabel: string
+    completedLabel: string
   }
+  progress: CategoryProgress
 }
 
-export function CategoryCard({ category, language, labels }: CategoryCardProps) {
+export function CategoryCard({
+  category,
+  language,
+  labels,
+  progress,
+}: CategoryCardProps) {
   const title = language === 'ru' ? category.title : category.titleEn
   const description =
     language === 'ru' ? category.description : category.descriptionEn
@@ -38,6 +47,25 @@ export function CategoryCard({ category, language, labels }: CategoryCardProps) 
             {example}
           </span>
         ))}
+      </div>
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+          <span>{labels.progressLabel}</span>
+          <span>
+            {progress.completedCount}/{progress.totalCount}{' '}
+            {progress.isCompleted ? labels.completedLabel : ''}
+          </span>
+        </div>
+        <div
+          className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"
+          aria-label={`${labels.progressLabel}: ${progress.completedCount}/${progress.totalCount}`}
+        >
+          <div
+            className="h-full rounded-full bg-blue-600 transition-all"
+            style={{ width: `${progress.percent}%` }}
+          />
+        </div>
       </div>
 
       <Link

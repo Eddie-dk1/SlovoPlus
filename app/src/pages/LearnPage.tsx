@@ -1,9 +1,11 @@
 import { CategoriesGrid } from '../components/features/learn/CategoriesGrid'
 import { LearningCollections } from '../components/features/learn/LearningCollections'
+import { useLearningProgress } from '../hooks/useLearningProgress'
 import { useI18n } from '../i18n/i18nContext'
 
 export function LearnPage() {
   const { language, t } = useI18n()
+  const { getProgress } = useLearningProgress()
 
   return (
     <div className="page-enter space-y-6">
@@ -29,6 +31,7 @@ export function LearnPage() {
         title={t.learn.categoriesTitle}
         countLabel={t.learn.categoriesCount}
         labels={t.learn}
+        getProgress={(category) => getProgress(language, category)}
       />
       <LearningCollections
         language={language}

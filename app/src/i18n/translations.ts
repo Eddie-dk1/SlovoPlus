@@ -53,6 +53,9 @@ export const translations = {
       categoriesCount: 'тематических блоков',
       categoryLabel: 'Категория',
       openMaterials: 'Открыть материалы',
+      progressLabel: 'Прогресс',
+      completedLabel: 'пройдено',
+      inProgressLabel: 'в работе',
       collectionsTitle: 'Готовые подборки',
       collectionsDescription:
         'Используй наборы для практики: открой слово и проверь его стиль, примеры и уместность.',
@@ -63,6 +66,11 @@ export const translations = {
       practiceExamples: 'Примеры для практики',
       practiceDescription:
         'Нажми на пример, чтобы открыть карточку слова и посмотреть стиль употребления.',
+      openWordCard: 'Открыть карточку',
+      categoryResultTitle: 'Категория пройдена',
+      categoryResultDescription:
+        'Все примеры отмечены. Можно вернуться к категориям или открыть карточки слов для повторения.',
+      resetCategoryProgress: 'Сбросить прогресс',
     },
     about: {
       title: 'О проекте',
@@ -148,6 +156,9 @@ export const translations = {
       categoriesCount: 'topic blocks',
       categoryLabel: 'Category',
       openMaterials: 'Open materials',
+      progressLabel: 'Progress',
+      completedLabel: 'done',
+      inProgressLabel: 'in progress',
       collectionsTitle: 'Ready-made sets',
       collectionsDescription:
         'Use these sets for practice: open a word and check its style, examples, and fit.',
@@ -158,6 +169,11 @@ export const translations = {
       practiceExamples: 'Practice examples',
       practiceDescription:
         'Click an example to open a word card and review usage style.',
+      openWordCard: 'Open card',
+      categoryResultTitle: 'Category complete',
+      categoryResultDescription:
+        'All examples are marked. You can return to categories or open word cards for review.',
+      resetCategoryProgress: 'Reset progress',
     },
     about: {
       title: 'About',
