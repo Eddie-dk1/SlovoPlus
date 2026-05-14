@@ -38,4 +38,22 @@ export const learningCollections: LearningCollection[] = [
     words: ['ирония', 'сарказм', 'метафора', 'публицистика'],
     wordsEn: ['irony', 'sarcasm', 'metaphor', 'journalism'],
   },
+  {
+    id: 'confusing-pairs',
+    title: 'Точные пары для эссе',
+    titleEn: 'Precise pairs for essays',
+    focus: 'Паронимы и близкие слова, где важны значение и сочетаемость.',
+    focusEn: 'Confusing pairs where meaning and collocation matter.',
+    words: ['одеть', 'надеть', 'эффектный', 'эффективный'],
+    wordsEn: ['affect', 'effect', 'compliment', 'complement'],
+  },
+  {
+    id: 'figurative-devices',
+    title: 'Выразительные средства',
+    titleEn: 'Figurative devices',
+    focus: 'Базовые термины для анализа художественного и публицистического текста.',
+    focusEn: 'Core terms for analyzing literary and journalistic writing.',
+    words: ['метафора', 'гипербола', 'олицетворение', 'выразительность'],
+    wordsEn: ['metaphor', 'hyperbole', 'personification', 'expressiveness'],
+  },
 ]
